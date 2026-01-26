@@ -560,23 +560,6 @@ Signals an error if the command fails (non-zero exit code)."
                                 output))))
          (kill-buffer output-buffer))))))
 
-(llm-tool-collection-deftool read-documentation
-    (:category "emacs" :tags (emacs introspection) :include t)
-    ((symbol "The name of the function or variable whose documentation is to be retrieved" :type string))
-    "Read the documentation for a given Emacs Lisp function or variable.
-Returns the documentation string if found, otherwise an error message."
-  (condition-case err
-      (let ((sym (intern symbol)))
-        (cond
-         ((fboundp sym)
-          (or (documentation sym) "No documentation available."))
-         ((boundp sym)
-          (or (documentation-property sym 'variable-documentation) "No documentation available."))
-         (t
-          (format "No documentation found for %s" symbol))))
-    (error (format "Error reading documentation for %s: %s"
-                   symbol (error-message-string err)))))
-
 (llm-tool-collection-deftool get-flymake-diagnostics
     (:category "emacs" :tags (emacs programming diagnostics) :include t)
     ((buffer-name "Name of the buffer to check (optional, defaults to current buffer)" :type string :optional t))
@@ -618,6 +601,59 @@ If the specified buffer does not exist, returns an error message."
                   "No diagnostics in current buffer."))
             "Flymake mode is not enabled. Please run M-x flymake-mode to enable it."))
       (format "Buffer '%s' not found." buffer-name))))
+
+(llm-tool-collection-deftool read-documentation
+    (:category "emacs" :tags (emacs introspection) :include t)
+    ((symbol "The name of the function or variable whose documentation is to be retrieved" :type string))
+    "Read the documentation for a given Emacs Lisp function or variable.
+Returns the documentation string if found, otherwise an error message."
+  (condition-case err
+      (let ((sym (intern symbol)))
+        (cond
+         ((fboundp sym)
+          (or (documentation sym) "No documentation available."))
+         ((boundp sym)
+          (or (documentation-property sym 'variable-documentation) "No documentation available."))
+         (t
+          (format "No documentation found for %s" symbol))))
+    (error (format "Error reading documentation for %s: %s"
+                   symbol (error-message-string err)))))
+)
+
+(llm-tool-collection-deftool eval-elisp
+    (:category "emacs" :tags (emacs evaluation) :confirm t :include t)
+    ((code "Emacs Lisp expression to evaluate" :type string))
+    "Evaluate an Emacs Lisp expression and return its result.
+Uses `eval' to execute the code. Note: this can execute arbitrary
+Elisp code, use with caution."
+  (condition-case err
+      (let ((result (eval (car (read-from-string code)))))
+        (prin1-to-string result))
+    (error (format "Error evaluating expression: %s" (error-message-string err)))))
+
+(llm-tool-collection-deftool fuzzy-search-functions
+    (:category "emacs" :tags (search introspection emacs) :include t)
+    ((query "Space-separated keywords to search for." :type string)
+     &optional
+     (limit "Maximum number of results to return." :type integer))
+    "Return a list of function symbols matching QUERY.
+QUERY is a space-separated string of keywords.
+Each keyword must appear (case-insensitive) in the function name.
+If LIMIT is non-nil, return at maximum LIMIT results."
+  (let ((keywords (split-string query))
+        (result '()))
+    (mapatoms (lambda (sym)
+                (when (and (fboundp sym)
+                           (cl-loop for kw in keywords
+                                    always (let ((case-fold-search t))
+                                             (string-match-p (regexp-quote kw) (symbol-name sym)))))
+                  (push sym result))))
+    (let ((final-result (if limit
+                            (take limit result)
+                          result)))
+      (if final-result
+          (mapconcat #'symbol-name final-result "\n")
+        "No matching functions found."))))
 
 (provide 'llm-tool-collection)
 
