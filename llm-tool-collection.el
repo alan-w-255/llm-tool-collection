@@ -560,6 +560,65 @@ Signals an error if the command fails (non-zero exit code)."
                                 output))))
          (kill-buffer output-buffer))))))
 
+(llm-tool-collection-deftool read-documentation
+    (:category "emacs" :tags (emacs introspection) :include t)
+    ((symbol "The name of the function or variable whose documentation is to be retrieved" :type string))
+    "Read the documentation for a given function or variable.
+Returns the documentation string if found, otherwise an error message."
+  (condition-case err
+      (let ((sym (intern symbol)))
+        (cond
+         ((fboundp sym)
+          (or (documentation sym) "No documentation available."))
+         ((boundp sym)
+          (or (documentation-property sym 'variable-documentation) "No documentation available."))
+         (t
+          (format "No documentation found for %s" symbol))))
+    (error (format "Error reading documentation for %s: %s"
+                   symbol (error-message-string err)))))
+
+(llm-tool-collection-deftool get-flymake-diagnostics
+    (:category "emacs" :tags (emacs programming diagnostics) :include t)
+    ((buffer-name "Name of the buffer to check (optional, defaults to current buffer)" :type string :optional t))
+    "Retrieve Flymake diagnostics for a buffer (errors, warnings, notes).
+Returns a formatted list of diagnostics with type, line number, column, and description.
+If no diagnostics are present, returns a message indicating that.
+If Flymake mode is not enabled, returns a prompt to enable it.
+If the specified buffer does not exist, returns an error message."
+  (let ((buffer (if buffer-name
+                    (get-buffer buffer-name)
+                  (current-buffer))))
+    (if buffer
+        (with-current-buffer buffer
+          (if (bound-and-true-p flymake-mode)
+              (let ((diagnostics (flymake-diagnostics)))
+                (if diagnostics
+                    (let ((result "")
+                          (count 0))
+                      (dolist (diag diagnostics result)
+                        (let* ((text (flymake-diagnostic-text diag))
+                               (type (flymake-diagnostic-type diag))
+                               (beg (flymake-diagnostic-beg diag))
+                               (line (line-number-at-pos beg))
+                               (col (save-excursion
+                                      (goto-char beg)
+                                      (current-column)))
+                               (type-str (symbol-name type))
+                               (type-lower (downcase type-str)))
+                          (setq result
+                                (concat result
+                                        (format "%d. %s: line %d, column %d: %s\n"
+                                                (setq count (1+ count))
+                                                (cond
+                                                 ((string-match-p "error" type-lower) "error")
+                                                 ((string-match-p "warning\\|warn" type-lower) "warning")
+                                                 ((string-match-p "note" type-lower) "note")
+                                                 (t type-str))
+                                                line col text))))))
+                  "No diagnostics in current buffer."))
+            "Flymake mode is not enabled. Please run M-x flymake-mode to enable it."))
+      (format "Buffer '%s' not found." buffer-name))))
+
 (provide 'llm-tool-collection)
 
 ;;; llm-tool-collection.el ends here
