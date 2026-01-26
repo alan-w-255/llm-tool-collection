@@ -563,7 +563,7 @@ Signals an error if the command fails (non-zero exit code)."
 (llm-tool-collection-deftool read-documentation
     (:category "emacs" :tags (emacs introspection) :include t)
     ((symbol "The name of the function or variable whose documentation is to be retrieved" :type string))
-    "Read the documentation for a given function or variable.
+    "Read the documentation for a given Emacs Lisp function or variable.
 Returns the documentation string if found, otherwise an error message."
   (condition-case err
       (let ((sym (intern symbol)))
