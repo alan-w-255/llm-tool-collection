@@ -618,7 +618,6 @@ Returns the documentation string if found, otherwise an error message."
           (format "No documentation found for %s" symbol))))
     (error (format "Error reading documentation for %s: %s"
                    symbol (error-message-string err)))))
-)
 
 (llm-tool-collection-deftool eval-elisp
     (:category "emacs" :tags (emacs evaluation) :confirm t :include t)
