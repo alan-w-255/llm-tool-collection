@@ -428,7 +428,7 @@ Supports '~'." :type string)
      (include "File pattern to include in search" :type string)
      (path "Directory to search in" :type string))
     "Content search using regex"
-  (let* ((default-directory (or path default-directory))
+  (let* ((default-directory (expand-file-name (or path default-directory)))
          (include-arg (if include
                           (format "--include=%s" (shell-quote-argument include))
                         ""))
