@@ -390,7 +390,7 @@ BUFFER-OR-FILE is either a buffer object or a file path string."
      &optional
      (path "Directory to search in" :type string))
     "File pattern matching"
-  (let* ((default-directory (or path default-directory))
+  (let* ((default-directory (expand-file-name (or path default-directory)))
          (files (file-expand-wildcards pattern)))
     (string-join files "\n")))
 (llm-tool-collection-deftool replace-buffer
