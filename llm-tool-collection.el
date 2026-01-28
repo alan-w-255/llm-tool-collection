@@ -562,14 +562,14 @@ Signals an error if the command fails (non-zero exit code)."
 
 (llm-tool-collection-deftool get-flymake-diagnostics
     (:category "emacs" :tags (emacs programming diagnostics) :include t)
-    ((buffer-name "Name of the buffer to check (optional, defaults to current buffer)" :type string :optional t))
+    ((buffer "Name of the buffer to check (optional, defaults to current buffer)" :type string :optional t))
     "Retrieve Flymake diagnostics for a buffer (errors, warnings, notes).
 Returns a formatted list of diagnostics with type, line number, column, and description.
 If no diagnostics are present, returns a message indicating that.
 If Flymake mode is not enabled, returns a prompt to enable it.
 If the specified buffer does not exist, returns an error message."
-  (let ((buffer (if buffer-name
-                    (get-buffer buffer-name)
+  (let ((buffer (if buffer
+                    (get-buffer buffer)
                   (current-buffer))))
     (if buffer
         (with-current-buffer buffer
@@ -600,7 +600,7 @@ If the specified buffer does not exist, returns an error message."
                                                 line col text))))))
                   "No diagnostics in current buffer."))
             "Flymake mode is not enabled. Please run M-x flymake-mode to enable it."))
-      (format "Buffer '%s' not found." buffer-name))))
+      (format "Buffer '%s' not found." buffer))))
 
 (llm-tool-collection-deftool read-documentation
     (:category "emacs" :tags (emacs introspection) :include t)
@@ -626,7 +626,7 @@ Returns the documentation string if found, otherwise an error message."
 Uses `eval' to execute the code. Note: this can execute arbitrary
 Elisp code, use with caution."
   (condition-case err
-      (let ((result (eval (car (read-from-string code)))))
+      (let ((result (eval (progn (car (read-from-string code))))))
         (prin1-to-string result))
     (error (format "Error evaluating expression: %s" (error-message-string err)))))
 
