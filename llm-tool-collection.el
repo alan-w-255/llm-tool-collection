@@ -630,6 +630,20 @@ Elisp code, use with caution."
         (prin1-to-string result))
     (error (format "Error evaluating expression: %s" (error-message-string err)))))
 
+(llm-tool-collection-deftool ask_user_clarification
+    (:category "clarification" :tags (clarification user-input) :confirm t :include t)
+    ((prompt "The prompt message displayed to the user to request clarification." :type string)
+     (options "An array of strings, each representing a choice for the user to select. If empty, free-form input is allowed." :type array :items '(:type string)))
+    "When clarification of the user's intent is needed, ask the user a question. Provide a prompt and an optional list of choices for the user to select from or allow free-form input. Returns the user's selection or input."
+  (let ((options-list (cond ((vectorp options) (append options nil))
+                            ((listp options) options)
+                            (t nil))))
+    (if (and options-list (not (null options-list)))
+        (let ((choice (completing-read prompt (mapcar 'identity options-list) nil nil)))
+          (format "User chose: %s" choice))
+      (let ((choice (read-string prompt)))
+        (format "User entered: %s" choice)))))
+
 (llm-tool-collection-deftool fuzzy-search-functions
     (:category "emacs" :tags (search introspection emacs) :include t)
     ((query "Space-separated keywords to search for." :type string)
