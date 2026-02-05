@@ -409,13 +409,14 @@ BUFFER-OR-FILE is either a buffer object or a file path string."
 
 (llm-tool-collection-deftool replace-file
     (:category "filesystem" :tags (filesystem editing) :confirm t)
-    ((file "Absolute or relative path to file to write.  \
-Supports '~'." :type string)
+    ((file "Absolute or relative path to file to write." :type string)
      (content "Content to write to the file" :type string))
     "Completely overwrites file at FILE with the given CONTENT."
   (let ((expanded-path (expand-file-name file)))
     (unless (file-exists-p expanded-path)
       (error "File does not exist: %s" expanded-path))
+    (unless (file-directory-p expanded-path)
+      (error "Path is not a file: %s" expanded-path))
     (with-temp-buffer
       (insert content)
       (write-file expanded-path)
