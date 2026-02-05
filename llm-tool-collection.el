@@ -379,7 +379,7 @@ BUFFER-OR-FILE is either a buffer object or a file path string."
      (old-string "Text to replace (must match exactly)" :type string)
      (new-string "Text to replace old_string with" :type string))
     "Edit file by replacing exactly one match of OLD-STRING with NEW-STRING."
-  (unless (string-empty-p (string-trim file))
+  (when (string-empty-p (string-trim file))
     (error "File path cannot be empty"))
   (let ((expanded-file (expand-file-name file)))
     (unless (file-exists-p expanded-file)
