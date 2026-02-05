@@ -673,6 +673,82 @@ If LIMIT is non-nil, return at maximum LIMIT results."
           (mapconcat #'symbol-name final-result "\n")
         "No matching functions found."))))
 
+(llm-tool-collection-deftool sed-edit-file
+    (:category "filesystem"
+     :tags (filesystem editing)
+     :confirm t
+     :include t)
+    ((file-path "Path to the file to edit. Can be relative or absolute path. The file must exist and have read/write permissions."
+                :type string)
+     (sed-expression "The sed editing expression. For example: 's/foo/bar/g' to globally replace foo with bar. Note: Special characters in the expression need to be properly escaped."
+                     :type string)
+     &optional
+     (in-place "Whether to modify the file in place. When true, uses the -i option for in-place editing; when false or unspecified, only outputs the result without modifying the file. It is recommended to set this to false first to test, then set to true once verified."
+               :type boolean)
+     (backup-suffix "Backup suffix (only valid when in-place is true). For example, '.bak' will create a .bak backup file before editing. Leave empty or omit to not create a backup."
+                    :type string))
+    "Use the sed stream editor to perform text transformations and editing operations on files.
+
+sed is a powerful text processing tool that can perform substitutions, deletions, insertions, appending, and more.
+
+Common sed expression examples:
+- Substitute text globally: 's/old-text/new-text/g'
+- Replace first match per line: 's/old/new/'
+- Delete lines matching pattern: '/pattern/d'
+- Delete line N: 'Nd' (e.g., '3d' deletes line 3)
+- Delete range of lines: 'N,Md' (e.g., '5,10d' deletes lines 5-10)
+- Insert before matching line: '/pattern/i\\inserted content'
+- Append after matching line: '/pattern/a\\appended content'
+- Print specific lines: 'Np' (used with -n option)
+- Use regex: '/regex/s/foo/bar/g'
+- Reference capture groups: 's/\\(foo\\)\\(bar\\)/\\2\\1/g'
+
+Safety features:
+- Path expansion: Automatically expands '~' and relative paths to absolute paths
+- Argument escaping: Uses shell-quote-argument to prevent command injection
+- Backup support: Can create backups when editing in-place via backup-suffix"
+  (condition-case err
+      (let* ((expanded-path (expand-file-name file-path))
+             ;; Check if file exists
+             (_ (unless (file-exists-p expanded-path)
+                  (error "File does not exist: %s" expanded-path)))
+             ;; Build sed command
+             (sed-cmd (cond
+                       ;; In-place editing with backup
+                       ((and in-place backup-suffix)
+                        (format "sed -i%s %s %s"
+                                (shell-quote-argument backup-suffix)
+                                (shell-quote-argument sed-expression)
+                                (shell-quote-argument expanded-path)))
+                       ;; In-place editing without backup
+                       (in-place
+                        (format "sed -i %s %s"
+                                (shell-quote-argument sed-expression)
+                                (shell-quote-argument expanded-path)))
+                       ;; Output only, don't modify file
+                       (t
+                        (format "sed %s %s"
+                                (shell-quote-argument sed-expression)
+                                (shell-quote-argument expanded-path)))))
+             ;; Execute command and capture output
+             (output-buffer (generate-new-buffer " *sed-output*"))
+             (exit-code (call-process-shell-command 
+                         sed-cmd nil output-buffer nil))
+             (output (with-current-buffer output-buffer
+                       (buffer-string))))
+        (kill-buffer output-buffer)
+        ;; Return result
+        (if (zerop exit-code)
+            (format "✅ Success!\nCommand: %s\nOutput:\n%s" 
+                    sed-cmd
+                    (if (string-empty-p (string-trim output))
+                        "(no output)"
+                      output))
+          (format "❌ Command failed with exit code %d\nCommand: %s\nError output:\n%s"
+                  exit-code sed-cmd output)))
+    (error (format "🚨 Error occurred: %s" (error-message-string err)))))
+
+
 (provide 'llm-tool-collection)
 
 ;;; llm-tool-collection.el ends here
