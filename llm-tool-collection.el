@@ -235,6 +235,8 @@ similar will add all tools to the respective client:
     ((path "Path to the file to read. Supports relative paths and '~'."
            :type string))
     "Read the contents of a file and return its content as a string."
+  (when (string-empty-p (string-trim path))
+    (error "Path cannot be empty"))
   (with-temp-buffer
     (insert-file-contents (expand-file-name path))
     (buffer-string)))
