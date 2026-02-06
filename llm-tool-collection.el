@@ -426,20 +426,28 @@ BUFFER-OR-FILE is either a buffer object or a file path string."
       (write-file expanded-path)
       (format "File replaced: %s" file))))
 
-(llm-tool-collection-deftool grep
+
+(llm-tool-collection-deftool rg
     (:category "filesystem" :tags (filesystem search system) :include t)
     ((pattern "Regex pattern to search in file contents" :type string)
      &optional
-     (include "File pattern to include in search" :type string)
-     (path "Directory to search in" :type string))
-    "Content search using regex"
+     (include "Glob to include in search, e.g. \"*.el\" or \"**/*.py\"" :type string)
+     (path "Directory to search in (defaults to current directory)" :type string))
+    "Content search using ripgrep (rg).
+Respects .gitignore by default. Returns matches with line numbers."
+  (when (string-empty-p (string-trim pattern))
+    (error "Pattern cannot be empty"))
+  (unless (executable-find "rg")
+    (error "ripgrep (rg) not found in PATH. Please install rg first."))
+
   (let* ((default-directory (expand-file-name (or path default-directory)))
-         (include-arg (if include
-                          (format "--include=%s" (shell-quote-argument include))
-                        ""))
-         (command (format "grep -r -n -E %s %s ."
-                          (shell-quote-argument pattern)
-                          include-arg))
+         ;; rg args: no color, line number, column, smart case, no headings
+         (args (append
+                '("--no-heading" "--color" "never" "--line-number" "--column" "--smart-case")
+                (when include (list "--glob" include))
+                ;; pattern + search root "."
+                (list pattern ".")))
+         (command (mapconcat #'shell-quote-argument (cons "rg" args) " "))
          (result (shell-command-to-string command)))
     (if (string-empty-p (string-trim result))
         "No matches found"
